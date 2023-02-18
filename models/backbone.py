@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch
 
-from model.common import CBL, C3
+from models.common import CBL, C3
 
 
 class SPPF(nn.Module):
