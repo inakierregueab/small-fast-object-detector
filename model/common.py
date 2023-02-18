@@ -86,7 +86,6 @@ class C3(nn.Module):
                         is repeated within the C3 block
         backbone (bool): if True, self.seq will be composed by bottlenecks 1, if False
                             it will be composed by bottlenecks 2 (check in the image linked below)
-        https://user-images.githubusercontent.com/31005897/172404576-c260dcf9-76bb-4bc8-b6a9-f2d987792583.png
     """
     def __init__(self, in_channels, out_channels, width_multiple=1, depth=1, backbone=True):
         super(C3, self).__init__()
