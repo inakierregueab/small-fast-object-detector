@@ -60,10 +60,10 @@ class CSPBackbone(nn.Module):
         for idx, layer in enumerate(self.backbone):
             # pass through all backbone layers
             x = layer(x)
-            # takes the out of the 2nd and 3rd C3 block and stores it plus SPPF final output
-            if idx in [4, 6, 9]:
+            # takes the out of the 2nd and 3rd C3 block and stores it for neck passing
+            if idx in [4, 6]:
                 backbone_connection.append(x)
-        return backbone_connection
+        return x, backbone_connection
 
 
 
