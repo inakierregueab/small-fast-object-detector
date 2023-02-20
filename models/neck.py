@@ -10,7 +10,6 @@ class PANet(nn.Module):
     """
     Parameters:
         first_out (int): number of channel of the first output tensor
-        backbone_connection (list): list of tensors from backbone (len=3)
     """
     def __init__(self, first_out):
         super(PANet, self).__init__()
