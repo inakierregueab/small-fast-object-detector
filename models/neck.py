@@ -7,10 +7,13 @@ from models.common import CBL, C3
 
 
 class PANet(nn.Module):
-    def __init__(self, first_out, backbone_connection):
+    """
+    Parameters:
+        first_out (int): number of channel of the first output tensor
+        backbone_connection (list): list of tensors from backbone (len=3)
+    """
+    def __init__(self, first_out):
         super(PANet, self).__init__()
-
-        self.backbone_connection = backbone_connection
 
         self.neck = nn.ModuleList()
         self.neck += [
@@ -25,7 +28,7 @@ class PANet(nn.Module):
         ]
 
     # TODO: Check skipped connections
-    def forward(self, x):
+    def forward(self, x, backbone_connection):
         neck_connection = []
         outputs = []
         for idx, layer in enumerate(self.neck):
@@ -34,7 +37,7 @@ class PANet(nn.Module):
                 x = layer(x)
                 neck_connection.append(x)
                 x = Resize([x.shape[2] * 2, x.shape[3] * 2], interpolation=InterpolationMode.NEAREST)(x)
-                x = torch.cat([x, self.backbone_connection.pop(-1)], dim=1)
+                x = torch.cat([x, backbone_connection.pop(-1)], dim=1)
             # Neck reconnection
             elif idx in [4, 6]:
                 x = layer(x)
