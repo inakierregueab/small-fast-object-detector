@@ -44,17 +44,26 @@ class CSPBackbone(nn.Module):
             CBL(in_channels=first_out, out_channels=first_out * 2, kernel_size=3, stride=2, padding=1),
             C3(in_channels=first_out * 2, out_channels=first_out * 2, width_multiple=0.5, depth=2),
             CBL(in_channels=first_out * 2, out_channels=first_out * 4, kernel_size=3, stride=2, padding=1),
+            # next out
             C3(in_channels=first_out * 4, out_channels=first_out * 4, width_multiple=0.5, depth=4),
             CBL(in_channels=first_out * 4, out_channels=first_out * 8, kernel_size=3, stride=2, padding=1),
+            # next out
             C3(in_channels=first_out * 8, out_channels=first_out * 8, width_multiple=0.5, depth=6),
             CBL(in_channels=first_out * 8, out_channels=first_out * 16, kernel_size=3, stride=2, padding=1),
             C3(in_channels=first_out * 16, out_channels=first_out * 16, width_multiple=0.5, depth=2),
             SPPF(in_channels=first_out * 16, out_channels=first_out * 16)
         ]
 
-    # TODO: modify backbone to return intermediate feature maps
+    # TODO: modify backbone to return intermediate feature maps (maybe in functional style)
     def forward(self, x):
-        pass
+        backbone_connection = []
+        for idx, layer in enumerate(self.backbone):
+            # pass through all backbone layers
+            x = layer(x)
+            # takes the out of the 2nd and 3rd C3 block and stores it plus SPPF final output
+            if idx in [4, 6, 9]:
+                backbone_connection.append(x)
+        return backbone_connection
 
 
 
