@@ -56,10 +56,11 @@ if __name__ == "__main__":
     print("feedforward took {:.2f} seconds".format(end - start))
 
     # Check model size
-    """count_parameters(model)
-    check_size(model)
-    model.half()
-    check_size(model)"""
+    print("Total parameters: {:.5f}M".format(sum(p.numel() for p in model.parameters()) / 1e6))
+    print("Total trainable parameters: {:.5f}M".format(sum(p.numel() for p in model.parameters() if p.requires_grad) / 1e6))
+    # Add buffer to parameters
+    print("Size of the model: {:.5f}MB".format(sum(p.numel() * p.element_size() for p in model.parameters()) / 1024**2))
+
 
 
 
