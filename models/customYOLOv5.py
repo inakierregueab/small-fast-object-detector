@@ -5,10 +5,11 @@ import time
 from backbone import CSPBackbone
 from neck import PANet
 from heads import Heads
+from base import BaseModel
 
 
 # Inspired by: https://github.com/AlessandroMondin/YOLOV5m
-class YOLOv5m(nn.Module):
+class YOLOv5m(BaseModel):
     def __init__(self, first_out, nc=80, anchors=(), ch=(), inference=False):
         super(YOLOv5m, self).__init__()
         # TODO: inference?
@@ -60,6 +61,8 @@ if __name__ == "__main__":
     print("Total trainable parameters: {:.5f}M".format(sum(p.numel() for p in model.parameters() if p.requires_grad) / 1e6))
     # Add buffer to parameters
     print("Size of the model: {:.5f}MB".format(sum(p.numel() * p.element_size() for p in model.parameters()) / 1024**2))
+    # prints more model info inherited from BaseModel
+    # print(model.__str__())
 
 
 

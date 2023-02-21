@@ -28,6 +28,9 @@ class Heads(nn.Module):
             ]
 
     def forward(self, x):
+        """
+        Returns a list of 3 tensors (one per head) with shape (batch_size, predictions_per_scale, grid_y, grid_x, 5 + nc)
+        """
         for i in range(self.nl):
             x[i] = self.out_convs[i](x[i])
             bs, _, grid_y, grid_x = x[i].shape
