@@ -140,7 +140,7 @@ Config files are in `.json` format:
   },
   "trainer": {
     "epochs": 100,                     // number of training epochs
-    "save_dir": "saved/",              // checkpoints are saved in save_dir/models/name
+    "save_dir": "saved/",              // checkpoints are saved in save_dir/model/name
     "save_freq": 1,                    // save checkpoints every save_freq epochs
     "verbosity": 2,                    // 0: quiet, 1: per epoch, 2: full
   

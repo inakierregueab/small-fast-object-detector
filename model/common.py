@@ -37,7 +37,7 @@ class Bottleneck1(nn.Module):
                                 of all the convolutions beside the
                                 first and last one. If closer to 0,
                                 the simpler the modelIf closer to 1,
-                                the models becomes more complex
+                                the model becomes more complex
     """
     def __init__(self, in_channels, out_channels, width_multiple=1):
         super(Bottleneck1, self).__init__()
@@ -58,7 +58,7 @@ class Bottleneck2(nn.Module):
                                 of all the convolutions beside the
                                 first and last one. If closer to 0,
                                 the simpler the modelIf closer to 1,
-                                the models becomes more complex
+                                the model becomes more complex
     """
 
     def __init__(self, in_channels, out_channels, width_multiple=1):
@@ -81,7 +81,7 @@ class C3(nn.Module):
                                 of all the convolutions beside the
                                 first and last one. If closer to 0,
                                 the simpler the modelIf closer to 1,
-                                the models becomes more complex
+                                the model becomes more complex
         depth (int): it controls the number of times the bottleneck (residual block)
                         is repeated within the C3 block
         backbone (bool): if True, self.seq will be composed by bottlenecks 1, if False
