@@ -56,6 +56,7 @@ class COCODataset(torch.utils.data.Dataset):
         #   Convert PIL image to PyTorch tensor
         #   Resize image to target size
 
+        # TODO: Must be checked and embedded in a transform function
         img = torchvision.transforms.ToTensor()(img)
         img = torchvision.transforms.functional.resize(img, (self.target_height, self.target_width))
 
