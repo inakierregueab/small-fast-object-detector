@@ -3,7 +3,7 @@ import torch
 
 from torchvision.transforms import Resize
 from torchvision.transforms import InterpolationMode
-from model.common import CBL, C3
+from model.common_modules import CBL, C3
 
 
 class PANet(nn.Module):
