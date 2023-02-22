@@ -10,30 +10,40 @@ from base import BaseModel
 
 # Inspired by: https://github.com/AlessandroMondin/YOLOV5m
 class YOLOv5m(BaseModel):
-    def __init__(self, first_out, nc=80, anchors=(), ch=(), inference=False):
+    def __init__(self, first_out, nc=80, anchors=(), ch=(), stride=[8, 16, 32], inference=False):
         super(YOLOv5m, self).__init__()
-        # TODO: inference?
-        self.inference = inference
-        self.backbone = CSPBackbone(first_out=first_out)
-        self.neck = PANet(first_out=first_out)
-        self.heads = Heads(nc=nc, anchors=anchors, ch=ch)
+        self.first_out = first_out
+        self.nc = nc
+        self.anchors = anchors
+        self.ch = ch
+        self.stride = stride
+        self.inference = inference  # TODO: what is inference?
+
+        self.backbone = CSPBackbone(first_out=self.first_out)
+        self.neck = PANet(first_out=self.first_out)
+        self.heads = Heads(nc=self.nc, anchors=self.anchors, ch=self.ch, stride=self.stride)
 
     def forward(self, x):
+        """
+        Parameters:
+            x (tensor): input tensor with shape (batch_size, 3, 640, 640)
+        Returns:
+            x (list): list of 3 tensors (one per head) with shape (batch_size, predictions_per_scale, grid_y, grid_x, 5 + nc)
+        """
         x, backbone_connection = self.backbone(x)
         x = self.neck(x, backbone_connection)
-        # Head returns a list of 3 tensors (one per head) with shape (batch_size, predictions_per_scale, grid_y, grid_x, 5 + nc)
         x = self.heads(x)
         return x
 
-    def cells_to_bboxes(self, predictions, anchors, strides):
+    def cells_to_bboxes(self, predictions):
         num_out_layers = len(predictions)
         grid = [torch.empty(0) for _ in range(num_out_layers)]  # initialize
         anchor_grid = [torch.empty(0) for _ in range(num_out_layers)]  # initialize
         all_bboxes = []
         for i in range(num_out_layers):
             bs, naxs, ny, nx, _ = predictions[i].shape
-            stride = strides[i]
-            grid[i], anchor_grid[i] = self.make_grids(anchors, naxs, ny=ny, nx=nx, stride=stride, i=i)
+            stride = self.stride[i]
+            grid[i], anchor_grid[i] = self.make_grids(naxs, ny=ny, nx=nx, i=i)
 
             # TODO: sigmoid applied element-wise, why not use softmax for class prediction?
             layer_prediction = predictions[i].sigmoid()
@@ -48,7 +58,7 @@ class YOLOv5m(BaseModel):
 
         return torch.cat(all_bboxes, dim=1)
 
-    def make_grids(self, anchors, naxs, stride, nx=20, ny=20, i=0):
+    def make_grids(self, naxs, nx=20, ny=20, i=0):
         x_grid = torch.arange(nx)
         x_grid = x_grid.repeat(ny).reshape(ny, nx)
         y_grid = torch.arange(ny).unsqueeze(0)
@@ -56,7 +66,7 @@ class YOLOv5m(BaseModel):
         xy_grid = torch.stack([x_grid, y_grid], dim=-1)
         xy_grid = xy_grid.expand(1, naxs, ny, nx, 2)
 
-        anchor_grid = (anchors[i] * stride).reshape((1, naxs, 1, 1, 2)).expand(1, naxs, ny, nx, 2)
+        anchor_grid = (self.anchors[i] * self.stride).reshape((1, naxs, 1, 1, 2)).expand(1, naxs, ny, nx, 2)
 
         return xy_grid, anchor_grid
 

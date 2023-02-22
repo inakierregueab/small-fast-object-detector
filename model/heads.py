@@ -3,7 +3,7 @@ import torch
 
 
 class Heads(nn.Module):
-    def __init__(self, nc=80, anchors=(), ch=()):
+    def __init__(self, nc=80, anchors=(), ch=(), stride=[8, 16, 32]):
         """
         Parameters:
             nc (int): number of classes
@@ -14,7 +14,7 @@ class Heads(nn.Module):
         self.nc = nc    # number of classes
         self.nl = len(anchors)  # number of detection layers
         self.naxs = len(anchors[0])  # number of anchors per scale
-        self.stride = [8, 16, 32]  # strides computed during build
+        self.stride = stride  # strides computed during build
 
         # anchors are divided by the stride (anchors_for_head_1/8, anchors_for_head_1/16 etc.)
         anchors_ = torch.tensor(anchors).float().view(self.nl, -1, 2) / torch.tensor(self.stride).repeat(6, 1).T.reshape(3, 3, 2)
