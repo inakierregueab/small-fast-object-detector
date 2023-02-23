@@ -11,15 +11,11 @@ class Heads(nn.Module):
             ch (list): list of channels of the input tensors
         """
         super(Heads, self).__init__()
-        self.nc = nc    # number of classes
+        self.nc = nc # number of classes
+        self.anchors = anchors  # anchors per detection layer
         self.nl = len(anchors)  # number of detection layers
         self.naxs = len(anchors[0])  # number of anchors per scale
         self.stride = stride  # strides computed during build
-
-        # anchors are divided by the stride (anchors_for_head_1/8, anchors_for_head_1/16 etc.)
-        anchors_ = torch.tensor(anchors).float().view(self.nl, -1, 2) / torch.tensor(self.stride).repeat(6, 1).T.reshape(3, 3, 2)
-        # Store the parameters of the model which should be saved and restored in the state_dict, but are not trained by the optimizer
-        self.register_buffer('anchors', anchors_)
 
         self.out_convs = nn.ModuleList()
         for in_channels in ch:

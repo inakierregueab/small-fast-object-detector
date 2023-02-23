@@ -13,8 +13,14 @@ class YOLOv5m(BaseModel):
     def __init__(self, first_out, nc=80, anchors=(), ch=(), stride=[8, 16, 32], inference=False):
         super(YOLOv5m, self).__init__()
         self.first_out = first_out
-        self.nc = nc
-        self.anchors = anchors
+        self.nc = nc  # number of classes
+
+        self.num_heads = len(stride)
+        # anchors are divided by the stride (anchors_for_head_1/8, anchors_for_head_1/16 etc.)
+        anchors_ = torch.tensor(anchors).float().view(self.num_heads, -1, 2) / torch.tensor(stride).repeat(6,1).T.reshape(3,3,2)
+        # Store the parameters of the model which should be saved and restored in the state_dict, but are not trained by the optimizer
+        self.register_buffer('anchors', anchors_)
+
         self.ch = ch
         self.stride = stride
         self.inference = inference  # TODO: what is inference?
@@ -35,40 +41,65 @@ class YOLOv5m(BaseModel):
         x = self.heads(x)
         return x
 
-    def cells_to_bboxes(self, predictions):
-        num_out_layers = len(predictions)
-        grid = [torch.empty(0) for _ in range(num_out_layers)]  # initialize
-        anchor_grid = [torch.empty(0) for _ in range(num_out_layers)]  # initialize
-        all_bboxes = []
-        for i in range(num_out_layers):
-            bs, naxs, ny, nx, _ = predictions[i].shape
-            stride = self.stride[i]
-            grid[i], anchor_grid[i] = self.make_grids(naxs, ny=ny, nx=nx, i=i)
+    def postprocessing(self, yolo_output, conf_thres=0.25, iou_thres=0.45):
+        """
+        Parameters:
+            yolo_output (list): list of 3 tensors (one per head) with shape (batch_size, predictions_per_scale, grid_y, grid_x, 5 + nc)
+            conf_thres (float): confidence threshold
+            iou_thres (float): IoU threshold
+        Returns:
+            bboxes (list): list of 3 tensors (one per head) with shape (batch_size, detected_objects, 5 + class_idx)
+        """
+        bboxes = []
 
-            # TODO: sigmoid applied element-wise, why not use softmax for class prediction?
-            layer_prediction = predictions[i].sigmoid()
+        # Iterate over every head/scale output
+        for head in range(self.num_heads):
+            bs, naxs, ny, nx, _ = yolo_output[head].shape   # get dimensions of the head output
 
-            obj = layer_prediction[..., 4:5]
-            xy = (2 * (layer_prediction[..., 0:2]) + grid[i] - 0.5) * stride
-            wh = ((2 * layer_prediction[..., 2:4]) ** 2) * anchor_grid[i]
-            best_class = torch.argmax(layer_prediction[..., 5:], dim=-1).unsqueeze(-1)
+            # Apply sigmoid to the output: in the class section, softmax is not applied because the YOLOv5 model is
+            # designed to perform multi-label classification, which means that each object in an image can be
+            # associated with multiple labels. Therefore, for each bounding box, the model outputs the probabilities
+            # of the object belonging to each class separately, without the constraint that the sum of probabilities
+            # across all classes should be equal to 1.
+            normalized_output = yolo_output[head].sigmoid()
 
-            scale_bboxes = torch.cat((best_class, obj, xy, wh), dim=-1).reshape(bs, -1, 6)
-            all_bboxes.append(scale_bboxes)
 
-        return torch.cat(all_bboxes, dim=1)
+            # Obtain cxcy grid
+            x_grid = torch.arange(nx)
+            x_grid = x_grid.repeat(ny).reshape(ny, nx)
+            y_grid = torch.arange(ny).unsqueeze(0)
+            y_grid = y_grid.T.repeat(1, nx).reshape(ny, nx)
+            xy_grid = torch.stack([x_grid, y_grid], dim=-1)
+            # Per each anchor in the scale, create an identical grid of (x, y) coordinates
+            xy_grid = xy_grid.expand(1, naxs, ny, nx, 2)
 
-    def make_grids(self, naxs, nx=20, ny=20, i=0):
-        x_grid = torch.arange(nx)
-        x_grid = x_grid.repeat(ny).reshape(ny, nx)
-        y_grid = torch.arange(ny).unsqueeze(0)
-        y_grid = y_grid.T.repeat(1, nx).reshape(ny, nx)
-        xy_grid = torch.stack([x_grid, y_grid], dim=-1)
-        xy_grid = xy_grid.expand(1, naxs, ny, nx, 2)
 
-        anchor_grid = (self.anchors[i] * self.stride).reshape((1, naxs, 1, 1, 2)).expand(1, naxs, ny, nx, 2)
+            # Obtain anchor grid for every anchor in the scale and undo the stride normalization in __init__
+            anchor_grid = (self.anchors[head]*self.stride[head]).reshape((1, naxs, 1, 1, 2)).expand(1, naxs, ny, nx, 2)
 
-        return xy_grid, anchor_grid
+
+            # Obtain the objectness score and the class prediction
+            obj = normalized_output[..., 4:5]
+            class_pred = normalized_output[..., 5:]
+            # TODO: Obtain the class with the highest score multplied by the objectness score or not?
+            best_class = torch.argmax(class_pred, dim=-1).unsqueeze(-1)
+            # best_class = torch.argmax(class_pred*obj, dim=-1).unsqueeze(-1)
+
+
+            # Compute the absolute coordinates of bboxes
+            xy = (2 * (normalized_output[..., 0:2]) + xy_grid - 0.5) * self.stride[head]
+            wh = ((2 * normalized_output[..., 2:4]) ** 2) * anchor_grid
+
+
+            # Concat and append to other heads predictions
+            head_output = torch.cat((best_class, obj, xy, wh), dim=-1).reshape(bs, -1, 6)
+            bboxes.append(head_output)
+            # TODO: use loop to perform some filtering before NMS
+
+        # Concatenate the predictions of all heads, this should be equal to other method
+        bboxes = torch.cat(bboxes, dim=1)
+
+        return bboxes
 
 
 if __name__ == "__main__":
@@ -98,6 +129,8 @@ if __name__ == "__main__":
     assert out[0].shape == (batch_size, 3, image_height//8, image_width//8, nc + 5)
     assert out[1].shape == (batch_size, 3, image_height//16, image_width//16, nc + 5)
     assert out[2].shape == (batch_size, 3, image_height//32, image_width//32, nc + 5)
+
+    pout2 = model.postprocessing(out)
 
     print("Success!")
     print("feedforward took {:.2f} seconds".format(end - start))
