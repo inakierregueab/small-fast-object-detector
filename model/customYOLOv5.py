@@ -97,6 +97,7 @@ class YOLOv5m(BaseModel):
             # TODO: use loop to perform some filtering before NMS
 
         # Concatenate the predictions of all heads, this should be equal to other method
+        # Its shape should be (batch_size, N, 6), where N = sum_heads(anchor_per_head * grid_y_head * grid_x_head)
         bboxes = torch.cat(bboxes, dim=1)
 
         return bboxes
