@@ -2,13 +2,16 @@ import torch.nn as nn
 import torch
 import time
 
+from torchvision.ops import boxes as box_ops
+
 from backbone import CSPBackbone
 from neck import PANet
 from heads import Heads
 from base import BaseModel
 
 
-# Inspired by: https://github.com/AlessandroMondin/YOLOV5m
+# Inspired by: https://github.com/AlessandroMondin/YOLOV5m &
+# https://pub.towardsai.net/yolov5-m-implementation-from-scratch-with-pytorch-c8f84a66c98b
 class YOLOv5m(BaseModel):
     def __init__(self, first_out, nc=80, anchors=(), ch=(), stride=[8, 16, 32], inference=False):
         super(YOLOv5m, self).__init__()
@@ -16,6 +19,7 @@ class YOLOv5m(BaseModel):
         self.nc = nc  # number of classes
 
         self.num_heads = len(stride)
+        # TODO: why stride anchors?
         # anchors are divided by the stride (anchors_for_head_1/8, anchors_for_head_1/16 etc.)
         anchors_ = torch.tensor(anchors).float().view(self.num_heads, -1, 2) / torch.tensor(stride).repeat(6,1).T.reshape(3,3,2)
         # Store the parameters of the model which should be saved and restored in the state_dict, but are not trained by the optimizer
@@ -41,7 +45,7 @@ class YOLOv5m(BaseModel):
         x = self.heads(x)
         return x
 
-    def postprocessing(self, yolo_output, conf_thres=0.25, iou_thres=0.45):
+    def postprocessing(self, yolo_output, conf_thres=0.0, iou_thres=0.0):
         """
         Parameters:
             yolo_output (list): list of 3 tensors (one per head) with shape (batch_size, predictions_per_scale, grid_y, grid_x, 5 + nc)
@@ -82,7 +86,7 @@ class YOLOv5m(BaseModel):
             obj = normalized_output[..., 4:5]
             class_pred = normalized_output[..., 5:]
             # TODO: Obtain the class with the highest score multplied by the objectness score or not?
-            best_class = torch.argmax(class_pred, dim=-1).unsqueeze(-1)
+            class_idx = torch.argmax(class_pred, dim=-1).unsqueeze(-1)
             # best_class = torch.argmax(class_pred*obj, dim=-1).unsqueeze(-1)
 
 
@@ -92,7 +96,7 @@ class YOLOv5m(BaseModel):
 
 
             # Concat and append to other heads predictions
-            head_output = torch.cat((best_class, obj, xy, wh), dim=-1).reshape(bs, -1, 6)
+            head_output = torch.cat((class_idx, obj, xy, wh), dim=-1).reshape(bs, -1, 6)
             bboxes.append(head_output)
             # TODO: use loop to perform some filtering before NMS
 
@@ -100,7 +104,47 @@ class YOLOv5m(BaseModel):
         # Its shape should be (batch_size, N, 6), where N = sum_heads(anchor_per_head * grid_y_head * grid_x_head)
         bboxes = torch.cat(bboxes, dim=1)
 
+        # Apply NMS
+        bboxes = self.nms(bboxes, conf_thres=conf_thres, iou_thres=iou_thres)
+
         return bboxes
+
+    def nms(self, pred_boxes: torch.Tensor, conf_thres: float = 0.0, iou_thres: float = 0.0):
+        """
+        Applies non-maximum suppression to the predicted boxes.
+        """
+        # Extract the objectness/confidence score and class idx
+        confidence_score = pred_boxes[..., 1]
+        class_idx = pred_boxes[..., 0]
+
+        # Filter out low-confidence boxes
+        mask = confidence_score >= conf_thres
+        boxes = pred_boxes[mask, :4]
+        scores = confidence_score[mask]
+        class_ids = class_idx[mask]
+
+        # Convert the coordinates from (x_center, y_center, width, height) to (x_min, y_min, x_max, y_max)
+        x_center, y_center, width, height = boxes.unbind(dim=1)
+        x_min = x_center - 0.5 * width
+        y_min = y_center - 0.5 * height
+        x_max = x_center + 0.5 * width
+        y_max = y_center + 0.5 * height
+        boxes = torch.stack([x_min, y_min, x_max, y_max], dim=1)
+
+        # Apply NMS
+        keep_indices = box_ops.nms(boxes, scores, iou_thres)
+
+        # Select the boxes that were kept
+        selected_boxes = []
+        for i in keep_indices:
+            box = torch.cat((boxes[i], scores[i].unsqueeze(0), class_ids[i].unsqueeze(0).float()), dim=0)
+            selected_boxes.append(box)
+
+        return selected_boxes
+
+
+
+
 
 
 if __name__ == "__main__":
