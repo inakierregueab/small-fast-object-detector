@@ -45,7 +45,7 @@ class YOLOv5m(BaseModel):
         x = self.heads(x)
         return x
 
-    def postprocessing(self, yolo_output, conf_thres=0.0, iou_thres=0.0):
+    def postprocessing(self, yolo_output, conf_thres=0.5, iou_thres=0.5):
         """
         Parameters:
             yolo_output (list): list of 3 tensors (one per head) with shape (batch_size, predictions_per_scale, grid_y, grid_x, 5 + nc)
@@ -98,7 +98,6 @@ class YOLOv5m(BaseModel):
             # Concat and append to other heads predictions
             head_output = torch.cat((class_idx, obj, xy, wh), dim=-1).reshape(bs, -1, 6)
             bboxes.append(head_output)
-            # TODO: use loop to perform some filtering before NMS
 
         # Concatenate the predictions of all heads, this should be equal to other method
         # Its shape should be (batch_size, N, 6), where N = sum_heads(anchor_per_head * grid_y_head * grid_x_head)
@@ -109,42 +108,41 @@ class YOLOv5m(BaseModel):
 
         return bboxes
 
-    def nms(self, pred_boxes: torch.Tensor, conf_thres: float = 0.0, iou_thres: float = 0.0):
+    def nms(self, batch_predictions: torch.Tensor, conf_thres: float = 0.0, iou_thres: float = 0.0):
         """
         Applies non-maximum suppression to the predicted boxes.
         """
-        # Extract the objectness/confidence score and class idx
-        confidence_score = pred_boxes[..., 1]
-        class_idx = pred_boxes[..., 0]
+        # TODO: Avoid for loop, play with pytorch filtering and slicing
+        batch_selected_predictions = []
+        for prediction in batch_predictions:
+            # Extract the objectness/confidence score and class idx
+            confidence_score = prediction[..., 1]
+            class_idx = prediction[..., 0]
 
-        # Filter out low-confidence boxes
-        mask = confidence_score >= conf_thres
-        boxes = pred_boxes[mask, :4]
-        scores = confidence_score[mask]
-        class_ids = class_idx[mask]
+            # Filter out low-confidence boxes
+            mask = confidence_score >= conf_thres
+            boxes = prediction[mask, 2:]
+            scores = confidence_score[mask]
+            class_ids = class_idx[mask]
 
-        # Convert the coordinates from (x_center, y_center, width, height) to (x_min, y_min, x_max, y_max)
-        x_center, y_center, width, height = boxes.unbind(dim=1)
-        x_min = x_center - 0.5 * width
-        y_min = y_center - 0.5 * height
-        x_max = x_center + 0.5 * width
-        y_max = y_center + 0.5 * height
-        boxes = torch.stack([x_min, y_min, x_max, y_max], dim=1)
+            # Convert the coordinates from (x_center, y_center, width, height) to (x_min, y_min, x_max, y_max)
+            x_center, y_center, width, height = boxes.unbind(dim=1)
+            x_min = x_center - 0.5 * width
+            y_min = y_center - 0.5 * height
+            x_max = x_center + 0.5 * width
+            y_max = y_center + 0.5 * height
+            boxes = torch.stack([x_min, y_min, x_max, y_max], dim=1)
 
-        # Apply NMS
-        keep_indices = box_ops.nms(boxes, scores, iou_thres)
+            # Post confidence filtering
+            conf_filtered = torch.cat((boxes, scores.unsqueeze(1), class_ids.unsqueeze(1)), 1)
 
-        # Select the boxes that were kept
-        selected_boxes = []
-        for i in keep_indices:
-            box = torch.cat((boxes[i], scores[i].unsqueeze(0), class_ids[i].unsqueeze(0).float()), dim=0)
-            selected_boxes.append(box)
+            # Apply NMS
+            keep_indices = box_ops.nms(boxes, scores, iou_thres)
 
-        return selected_boxes
+            # Post NMS filtering
+            batch_selected_predictions.append(conf_filtered[keep_indices])
 
-
-
-
+        return batch_selected_predictions
 
 
 if __name__ == "__main__":
