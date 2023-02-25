@@ -1,8 +1,9 @@
 import os
 import torch
 import torch.utils.data
-import torchvision
 import albumentations as A
+import numpy as np
+
 from PIL import Image
 from pycocotools.coco import COCO
 
@@ -112,16 +113,20 @@ class COCODataset(torch.utils.data.Dataset):
             #   1) Labels are in COCO format start from 1, but PyTorch CrossEntropyLoss expects labels to start from 0
             class_idx = coco_annotation[i]['category_id'] - 1
             #   2) Original COCO format for bboxes is (x_min, y_min, width, height), chage to (x_c, y_c, width, height)
-            x_center = (2 * coco_annotation[i]['bbox'][0] + coco_annotation[i]['bbox'][2]) / (2 + image.width)
-            y_center = (2 * coco_annotation[i]['bbox'][1] + coco_annotation[i]['bbox'][3]) / (2 + image.height)
+            x_center = (2 * coco_annotation[i]['bbox'][0] + coco_annotation[i]['bbox'][2]) / (2 * image.width)
+            y_center = (2 * coco_annotation[i]['bbox'][1] + coco_annotation[i]['bbox'][3]) / (2 * image.height)
             #   3) Normalize bboxes so that they are independent of image size
             width = coco_annotation[i]['bbox'][2] / image.width
             height = coco_annotation[i]['bbox'][3] / image.height
             #   4) Append to list of bboxes, class_idx is last for Albumentations
+            if x_center > 1 or y_center > 1 or width > 1 or height > 1:
+                print('ERROR: bbox coordinates are out of bounds')
+                x = 0
             bboxes.append([x_center, y_center, width, height, class_idx])
 
         # TODO: maybe numpy only?
         bboxes = torch.as_tensor(bboxes, dtype=torch.float32)
+        image = np.array(image)
         return bboxes, image
 
     def __len__(self):
@@ -136,10 +141,15 @@ if __name__ == '__main__':
         [(116, 90), (156, 198), (373, 326)]  # P5/32
         ]
 
+    scale = 1.0
+    IMAGE_SIZE = 640
+    train_transforms = A.Compose([A.LongestMaxSize(max_size=int(IMAGE_SIZE * scale))],
+                                 bbox_params=A.BboxParams(format="yolo", min_visibility=0.4, label_fields=[]))
+
     # TODO: use Albumentations transforms
     dataset = COCODataset(root='/Users/mariateresaalvarez-buhillapuig/Desktop/HuPBA/repos/small-fast-object-detector/data/COCO_dataset/images/val2017',
                           annotation='/Users/mariateresaalvarez-buhillapuig/Desktop/HuPBA/repos/small-fast-object-detector/data/COCO_dataset/annotations/instances_val2017.json',
-                          anchors=anchors)
+                          anchors=anchors, transform=train_transforms)
     # T
     img, labels = dataset[0]
     x=0
