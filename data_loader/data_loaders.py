@@ -1,7 +1,7 @@
 import torch
 from torchvision import datasets, transforms
 from base import BaseDataLoader
-from COCO_dataset import COCODataset
+from data_loader.coco_dataset import COCODataset
 
 
 class MnistDataLoader(BaseDataLoader):

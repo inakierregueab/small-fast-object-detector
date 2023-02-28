@@ -1,0 +1,55 @@
+{
+    "name": "YOLOv5",
+    "n_gpu": 1,
+
+    "arch": {
+        "type": "YOLOv5m",
+        "args": {}
+    },
+    "data_loader": {
+        "type": "COCODataLoader",
+        "args":{
+            "data_dir": "data/COCO_dataset",
+            "batch_size": 128,
+            "shuffle": true,
+            "validation_split": 0.0,
+            "num_workers": 2
+        }
+    },
+    "optimizer": {
+        "type": "Adam",
+        "args":{
+            "lr": 5e-4,
+            "weight_decay": 0,
+            "amsgrad": true
+        }
+    },
+    "loss": {
+        "type": "YOLOLoss",
+        "args": {
+            "anchors": [[10, 13], [16, 30], [33, 23], [30, 61], [62, 45], [59, 119], [116, 90], [156, 198], [373, 326]]
+        }
+    },
+    "metrics": [
+        "accuracy", "top_k_acc"
+    ],
+    "lr_scheduler": {
+        "type": "StepLR",
+        "args": {
+            "step_size": 50,
+            "gamma": 0.1
+        }
+    },
+    "trainer": {
+        "epochs": 100,
+
+        "save_dir": "saved/",
+        "save_period": 1,
+        "verbosity": 2,
+        
+        "monitor": "min val_loss",
+        "early_stop": 10,
+
+        "tensorboard": true
+    }
+}

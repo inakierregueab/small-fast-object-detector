@@ -3,9 +3,9 @@ import collections
 import torch
 import numpy as np
 import data_loader.data_loaders as module_data
-import model.loss as module_loss
+import model.YOLO_loss as module_loss
 import model.metric as module_metric
-import model.toy_mnist_model as module_arch
+import model.customyolov5 as module_arch
 from parse_config import ConfigParser
 from trainer import Trainer
 from utils import prepare_device
@@ -36,7 +36,8 @@ def main(config):
         model = torch.nn.DataParallel(model, device_ids=device_ids)
 
     # get function handles of loss and metrics
-    criterion = getattr(module_loss, config['loss'])
+    criterion = config.init_obj('loss', module_loss)
+    #criterion = getattr(module_loss, config['loss'])
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
@@ -56,7 +57,7 @@ def main(config):
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='PyTorch Template')
-    args.add_argument('-c', '--config', default='config.json', type=str,
+    args.add_argument('-c', '--config', default='yolov5_config.json', type=str,
                       help='config file path (default: None)')
     args.add_argument('-r', '--resume', default=None, type=str,
                       help='path to latest checkpoint (default: None)')

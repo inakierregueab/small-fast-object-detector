@@ -4,28 +4,31 @@ import time
 
 from torchvision.ops import boxes as box_ops
 
-from backbone import CSPBackbone
-from neck import PANet
-from heads import Heads
+from model.backbone import CSPBackbone
+from model.neck import PANet
+from model.heads import Heads
 from base import BaseModel
 
 
 # Inspired by: https://github.com/AlessandroMondin/YOLOV5m &
 # https://pub.towardsai.net/yolov5-m-implementation-from-scratch-with-pytorch-c8f84a66c98b
 class YOLOv5m(BaseModel):
-    def __init__(self, first_out, nc=80, anchors=(), ch=(), stride=[8, 16, 32], inference=False):
+    def __init__(self, first_out=48, nc=80, stride=[8, 16, 32], inference=False):
         super(YOLOv5m, self).__init__()
         self.first_out = first_out
         self.nc = nc  # number of classes
 
         self.num_heads = len(stride)
         # TODO: why stride anchors?
+        anchors = [[(10, 13), (16, 30), (33, 23)],
+                     [(30, 61), (62, 45), (59, 119)],
+                        [(116, 90), (156, 198), (373, 326)]]
         # anchors are divided by the stride (anchors_for_head_1/8, anchors_for_head_1/16 etc.)
         anchors_ = torch.tensor(anchors).float().view(self.num_heads, -1, 2) / torch.tensor(stride).repeat(6,1).T.reshape(3,3,2)
         # Store the parameters of the model which should be saved and restored in the state_dict, but are not trained by the optimizer
         self.register_buffer('anchors', anchors_)
 
-        self.ch = ch
+        self.ch = (first_out*4, first_out*8, first_out*16)
         self.stride = stride
         self.inference = inference  # TODO: what is inference?
 
@@ -192,8 +195,7 @@ if __name__ == "__main__":
     # Random input
     x = torch.rand(batch_size, 3, image_height, image_width)
 
-    model = YOLOv5m(first_out=first_out, nc=nc, anchors=anchors,
-                    ch=(first_out*4, first_out*8, first_out*16), inference=False)
+    model = YOLOv5m()
 
     start = time.time()
     out = model(x)
