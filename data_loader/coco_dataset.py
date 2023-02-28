@@ -12,7 +12,7 @@ from utils.util import iou_width_height
 
 
 class COCODataset(torch.utils.data.Dataset):
-    def __init__(self, root, annotation, anchors, image_size=640, strides=[8, 16, 32], nc=80, transform=None):
+    def __init__(self, root, annotation, anchors, image_size=640, strides=[8, 16, 32], nc=90, transform=None):
         """
         Reads the COCO dataset, changes bboxes to YOLO format, applies augmentation and builds the target tensors
         Parameters:

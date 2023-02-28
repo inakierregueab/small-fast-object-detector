@@ -5,11 +5,17 @@ from utils import intersection_over_union
 
 
 class YOLOLoss(nn.Module):
-    def __init__(self, anchors):
+    def __init__(self):
         super(YOLOLoss, self).__init__()
 
         # TODO: normalize anchors and express them in terms of the grid size?
-        self.anchors = anchors
+        anchors = [[(10, 13), (16, 30), (33, 23)],  # P3/8
+                [(30, 61), (62, 45), (59, 119)],  # P4/16
+                [(116, 90), (156, 198), (373, 326)]  # P5/32
+                ]
+        scales = [80, 40, 20]
+        self.anchors = (torch.tensor(anchors)/640 * torch.tensor(scales).unsqueeze(1).unsqueeze(1).repeat(1, 3, 2))
+
         self.num_heads = 3
 
         self.head_loss = HeadLoss()
@@ -46,7 +52,7 @@ class HeadLoss(nn.Module):
         # post-processing of predictions
         pred_xy = (predictions[..., 1:3].sigmoid() * 2) - 0.5
         # TODO: anchors normalized?
-        pred_wh = ((predictions[..., 3:5].sigmoid() * 2) ** 2) * anchors # cell coords
+        pred_wh = ((predictions[..., 3:5].sigmoid() * 2) ** 2) * anchors.reshape(1, 3, 1, 1, 2) # cell coords
         pred_box = torch.cat([pred_xy, pred_wh], dim=-1)
 
         # NO OBJECT LOSS

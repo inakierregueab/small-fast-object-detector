@@ -1,7 +1,10 @@
 import torch
+import albumentations as A
+
 from torchvision import datasets, transforms
 from base import BaseDataLoader
 from data_loader.coco_dataset import COCODataset
+from albumentations.pytorch import ToTensorV2
 
 
 class MnistDataLoader(BaseDataLoader):
@@ -40,9 +43,15 @@ class COCODataLoader(BaseDataLoader):
                 [(116, 90), (156, 198), (373, 326)]  # P5/32
                 ]
 
+        train_transforms = A.Compose([A.Resize(height=640, width=640),
+                                      A.Normalize(mean=[0, 0, 0], std=[1, 1, 1], max_pixel_value=255),
+                                      ToTensorV2()],
+                                     bbox_params=A.BboxParams(format="yolo", min_visibility=0.4, label_fields=[]))
+
         self.dataset = COCODataset(root=self.data_dir + '/images/val2017',
                                    annotation=self.data_dir + "/annotations/instances_val2017.json",
-                                   anchors=anchors)
+                                   anchors=anchors, transform=train_transforms)
+
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
 
 
@@ -53,6 +62,6 @@ if __name__ == '__main__':
                                       num_workers=1, training=True)
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    for imgs, annotations in data_load_coco:
-        print(annotations)
+    train_features, train_labels = next(iter(data_load_coco))
+    x=0
 

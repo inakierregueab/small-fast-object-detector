@@ -13,7 +13,7 @@ from base import BaseModel
 # Inspired by: https://github.com/AlessandroMondin/YOLOV5m &
 # https://pub.towardsai.net/yolov5-m-implementation-from-scratch-with-pytorch-c8f84a66c98b
 class YOLOv5m(BaseModel):
-    def __init__(self, first_out=48, nc=80, stride=[8, 16, 32], inference=False):
+    def __init__(self, first_out=48, nc=90, stride=[8, 16, 32], inference=False):
         super(YOLOv5m, self).__init__()
         self.first_out = first_out
         self.nc = nc  # number of classes
