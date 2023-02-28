@@ -34,7 +34,15 @@ class COCODataLoader(BaseDataLoader):
     """
     def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.1, num_workers=1, training=True):
         self.data_dir = data_dir
-        self.dataset = COCODataset(root = self.data_dir + '/images/val2017', annotation = self.data_dir + "/annotations/instances_val2017.json")
+
+        anchors = [[(10, 13), (16, 30), (33, 23)],  # P3/8
+                [(30, 61), (62, 45), (59, 119)],  # P4/16
+                [(116, 90), (156, 198), (373, 326)]  # P5/32
+                ]
+
+        self.dataset = COCODataset(root=self.data_dir + '/images/val2017',
+                                   annotation=self.data_dir + "/annotations/instances_val2017.json",
+                                   anchors=anchors)
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
 
 
