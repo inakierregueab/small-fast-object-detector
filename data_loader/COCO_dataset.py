@@ -6,6 +6,7 @@ import numpy as np
 
 from PIL import Image
 from pycocotools.coco import COCO
+from albumentations.pytorch import ToTensorV2
 
 from utils.util import iou_width_height
 
@@ -13,10 +14,15 @@ from utils.util import iou_width_height
 class COCODataset(torch.utils.data.Dataset):
     def __init__(self, root, annotation, anchors, image_size=640, strides=[8, 16, 32], nc=80, transform=None):
         """
+        Reads the COCO dataset, changes bboxes to YOLO format, applies augmentation and builds the target tensors
         Parameters:
             root: path to the images folder
             annotation: path to the annotation json file
-            transform: torchvision.transforms for transforms and tensor conversion
+            anchors: list of anchors for each scale NOT NORMALIZED
+            image_size: size of the image
+            strides: strides for each scale
+            nc: number of classes
+            transform: albumentations transforms
         """
         self.root = root
         self.coco = COCO(annotation)
@@ -25,9 +31,9 @@ class COCODataset(torch.utils.data.Dataset):
 
         self.target_height = image_size
         self.target_width = image_size
-
-        self.S = [image_size//stride for stride in strides[::-1]]  # Grid size for each scale
-        self.anchors = torch.tensor(anchors[0] + anchors[1] + anchors[2])  # for all 3 scales
+        self.S = [image_size//stride for stride in strides]  # Grid size for each scale
+        # normalized to perform iou with bbox
+        self.anchors = (torch.tensor(anchors[0] + anchors[1] + anchors[2])/ image_size).reshape(9, 2)
         self.num_anchors = self.anchors.shape[0]
         self.num_anchors_per_scale = self.num_anchors // 3
         self.C = nc
@@ -45,6 +51,7 @@ class COCODataset(torch.utils.data.Dataset):
             bboxes = augmentations['bboxes']
 
         #   Prepare target data for loss computation
+        #   TODO: move this to loss?
         target = self.match_loss_format(bboxes)
 
         return image, target
@@ -119,13 +126,8 @@ class COCODataset(torch.utils.data.Dataset):
             width = coco_annotation[i]['bbox'][2] / image.width
             height = coco_annotation[i]['bbox'][3] / image.height
             #   4) Append to list of bboxes, class_idx is last for Albumentations
-            if x_center > 1 or y_center > 1 or width > 1 or height > 1:
-                print('ERROR: bbox coordinates are out of bounds')
-                x = 0
             bboxes.append([x_center, y_center, width, height, class_idx])
 
-        # TODO: maybe numpy only?
-        bboxes = torch.as_tensor(bboxes, dtype=torch.float32)
         image = np.array(image)
         return bboxes, image
 
@@ -143,13 +145,11 @@ if __name__ == '__main__':
 
     scale = 1.0
     IMAGE_SIZE = 640
-    train_transforms = A.Compose([A.LongestMaxSize(max_size=int(IMAGE_SIZE * scale))],
+    train_transforms = A.Compose([A.LongestMaxSize(max_size=int(IMAGE_SIZE * scale)), ToTensorV2()],
                                  bbox_params=A.BboxParams(format="yolo", min_visibility=0.4, label_fields=[]))
 
-    # TODO: use Albumentations transforms
     dataset = COCODataset(root='/Users/mariateresaalvarez-buhillapuig/Desktop/HuPBA/repos/small-fast-object-detector/data/COCO_dataset/images/val2017',
                           annotation='/Users/mariateresaalvarez-buhillapuig/Desktop/HuPBA/repos/small-fast-object-detector/data/COCO_dataset/annotations/instances_val2017.json',
                           anchors=anchors, transform=train_transforms)
-    # T
-    img, labels = dataset[0]
+    img, labels = dataset[2]
     x=0
