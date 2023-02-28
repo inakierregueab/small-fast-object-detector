@@ -3,7 +3,7 @@ import collections
 import torch
 import numpy as np
 import data_loader.data_loaders as module_data
-import model.YOLO_loss as module_loss
+import model.yolo_loss as module_loss
 import model.metric as module_metric
 import model.customyolov5 as module_arch
 from parse_config import ConfigParser

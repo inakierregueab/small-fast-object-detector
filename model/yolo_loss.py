@@ -5,18 +5,13 @@ from utils import intersection_over_union
 
 
 class YOLOLoss(nn.Module):
-    def __init__(self):
+    def __init__(self, anchors, stride, image_size):
         super(YOLOLoss, self).__init__()
 
         # TODO: normalize anchors and express them in terms of the grid size?
-        anchors = [[(10, 13), (16, 30), (33, 23)],  # P3/8
-                [(30, 61), (62, 45), (59, 119)],  # P4/16
-                [(116, 90), (156, 198), (373, 326)]  # P5/32
-                ]
-        scales = [80, 40, 20]
+        scales = [image_size//strid for strid in stride]
         self.anchors = (torch.tensor(anchors)/640 * torch.tensor(scales).unsqueeze(1).unsqueeze(1).repeat(1, 3, 2))
-
-        self.num_heads = 3
+        self.num_heads = len(stride)
 
         self.head_loss = HeadLoss()
 

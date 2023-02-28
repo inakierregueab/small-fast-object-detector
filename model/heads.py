@@ -2,7 +2,7 @@ import torch.nn as nn
 
 
 class Heads(nn.Module):
-    def __init__(self, nc=80, anchors=(), ch=(), stride=[8, 16, 32]):
+    def __init__(self, nc, stride, anchors, ch):
         """
         Parameters:
             nc (int): number of classes

@@ -13,22 +13,19 @@ from base import BaseModel
 # Inspired by: https://github.com/AlessandroMondin/YOLOV5m &
 # https://pub.towardsai.net/yolov5-m-implementation-from-scratch-with-pytorch-c8f84a66c98b
 class YOLOv5m(BaseModel):
-    def __init__(self, first_out=48, nc=90, stride=[8, 16, 32], inference=False):
+    def __init__(self, first_out, nc, stride, anchors, inference=False):
         super(YOLOv5m, self).__init__()
         self.first_out = first_out
         self.nc = nc  # number of classes
 
         self.num_heads = len(stride)
         # TODO: why stride anchors?
-        anchors = [[(10, 13), (16, 30), (33, 23)],
-                     [(30, 61), (62, 45), (59, 119)],
-                        [(116, 90), (156, 198), (373, 326)]]
         # anchors are divided by the stride (anchors_for_head_1/8, anchors_for_head_1/16 etc.)
         anchors_ = torch.tensor(anchors).float().view(self.num_heads, -1, 2) / torch.tensor(stride).repeat(6,1).T.reshape(3,3,2)
         # Store the parameters of the model which should be saved and restored in the state_dict, but are not trained by the optimizer
         self.register_buffer('anchors', anchors_)
 
-        self.ch = (first_out*4, first_out*8, first_out*16)
+        self.ch = [first_out*4, first_out*8, first_out*16]
         self.stride = stride
         self.inference = inference  # TODO: what is inference?
 

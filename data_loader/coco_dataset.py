@@ -12,7 +12,7 @@ from utils.util import iou_width_height
 
 
 class COCODataset(torch.utils.data.Dataset):
-    def __init__(self, root, annotation, anchors, image_size=640, strides=[8, 16, 32], nc=90, transform=None):
+    def __init__(self, root, annotation, anchors, image_size, stride, nc, transform=None):
         """
         Reads the COCO dataset, changes bboxes to YOLO format, applies augmentation and builds the target tensors
         Parameters:
@@ -20,7 +20,7 @@ class COCODataset(torch.utils.data.Dataset):
             annotation: path to the annotation json file
             anchors: list of anchors for each scale NOT NORMALIZED
             image_size: size of the image
-            strides: strides for each scale
+            stride: strides for each scale
             nc: number of classes
             transform: albumentations transforms
         """
@@ -31,7 +31,7 @@ class COCODataset(torch.utils.data.Dataset):
 
         self.target_height = image_size
         self.target_width = image_size
-        self.S = [image_size//stride for stride in strides]  # Grid size for each scale
+        self.S = [image_size//strid for strid in stride]  # Grid size for each scale
         # normalized to perform iou with bbox
         self.anchors = (torch.tensor(anchors[0] + anchors[1] + anchors[2])/ image_size).reshape(9, 2)
         self.num_anchors = self.anchors.shape[0]

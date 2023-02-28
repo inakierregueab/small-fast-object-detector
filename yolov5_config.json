@@ -4,16 +4,33 @@
 
     "arch": {
         "type": "YOLOv5m",
-        "args": {}
+        "args": {
+            "first_out": 48,
+            "nc": 90,
+            "stride": [8, 16, 32],
+            "anchors": [
+                [[10, 13], [16, 30], [33, 23]],
+                [[30, 61], [62, 45], [59, 119]],
+                [[116, 90], [156, 198], [373, 326]]
+            ]
+        }
     },
     "data_loader": {
         "type": "COCODataLoader",
         "args":{
             "data_dir": "data/COCO_dataset",
-            "batch_size": 10,
+            "batch_size": 2,
             "shuffle": true,
             "validation_split": 0.0,
-            "num_workers": 2
+            "num_workers": 2,
+            "anchors": [
+                [[10, 13], [16, 30], [33, 23]],
+                [[30, 61], [62, 45], [59, 119]],
+                [[116, 90], [156, 198], [373, 326]]
+            ],
+            "image_size": 640,
+            "stride": [8, 16, 32],
+            "nc": 90
         }
     },
     "optimizer": {
@@ -26,7 +43,15 @@
     },
     "loss": {
         "type": "YOLOLoss",
-        "args": {}
+        "args": {
+            "anchors": [
+                [[10, 13], [16, 30], [33, 23]],
+                [[30, 61], [62, 45], [59, 119]],
+                [[116, 90], [156, 198], [373, 326]]
+            ],
+            "stride": [8, 16, 32],
+            "image_size": 640
+        }
     },
     "metrics": [
         "accuracy", "top_k_acc"
