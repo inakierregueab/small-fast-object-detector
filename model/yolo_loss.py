@@ -10,7 +10,7 @@ class YOLOLoss(nn.Module):
 
         # TODO: normalize anchors and express them in terms of the grid size?
         scales = [image_size//strid for strid in stride]
-        self.anchors = (torch.tensor(anchors)/640 * torch.tensor(scales).unsqueeze(1).unsqueeze(1).repeat(1, 3, 2))
+        self.anchors = (torch.tensor(anchors)/image_size * torch.tensor(scales).unsqueeze(1).unsqueeze(1).repeat(1, 3, 2))
         self.num_heads = len(stride)
 
         self.head_loss = HeadLoss()
@@ -46,7 +46,6 @@ class HeadLoss(nn.Module):
 
         # post-processing of predictions
         pred_xy = (predictions[..., 1:3].sigmoid() * 2) - 0.5
-        # TODO: anchors normalized?
         pred_wh = ((predictions[..., 3:5].sigmoid() * 2) ** 2) * anchors.reshape(1, 3, 1, 1, 2) # cell coords
         pred_box = torch.cat([pred_xy, pred_wh], dim=-1)
 

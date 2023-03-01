@@ -53,7 +53,7 @@ class Trainer(BaseTrainer):
             self.train_metrics.update('loss', loss.item())
             for met in self.metric_ftns:
                 pass
-                #   TODO: use appropiate metric function
+                #   TODO: use appropiate metric function in valid step
                 #   self.train_metrics.update(met.__name__, met(output, target))
 
             if batch_idx % self.log_step == 0:
